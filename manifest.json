@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Open Teleport AI Bridge",
+  "version": "1.0",
+  "description": "WebSocket-powered browser automation for AI chat interfaces",
+  "permissions": [
+    "tabs",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.perplexity.ai/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.perplexity.ai/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
