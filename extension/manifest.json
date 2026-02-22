@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Open Teleport Bridge",
+  "version": "0.1.0",
+  "description": "Bridges OpenAI-compatible requests from localhost to Gemini UI.",
+  "permissions": ["tabs", "scripting", "storage"],
+  "host_permissions": ["http://localhost:8888/*", "ws://localhost:8888/*", "https://gemini.google.com/*"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": ["src/content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Open Teleport Bridge"
+  }
+}

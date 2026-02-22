@@ -1,60 +1,88 @@
 # Open-Teleport
 
-A Chrome extension designed for power users and developers to optimize their AI workflow with prompt standardization, token management, and persistent memory storage.
+Open-Teleport is a local bridge that lets OpenAI-compatible clients talk to Gemini Web UI through a Chrome extension.
 
-## Features
+## Architecture
 
-### 1. Prompt Repository & Templates
-- Store and manage a library of reusable prompt instructions within the extension
-- Standardize workflows across different AI models and use cases
-- Ensure consistency in AI-generated outputs through template-based prompting
-- Quick access to frequently used prompt configurations
+1. A lightweight Node.js bridge server listens on `localhost:8888`.
+2. The Chrome extension opens a websocket to `ws://localhost:8888/ws-extension`.
+3. Your app calls `POST /v1/chat/completions` (or `POST /message`) on the bridge.
+4. The bridge forwards the request to the extension.
+5. The extension transforms the request into a Gemini-friendly prompt with system rules.
+6. The extension injects the prompt into Gemini UI, waits for the response, normalizes it to OpenAI-style JSON, and returns it through websocket.
+7. The bridge returns the response back to the caller.
 
-### 2. Smart Prompt Injection & Wrapping
-- Enter your base prompt and let the extension automatically enhance it
-- Apply selected prompt templates/configurations to wrap or inject standardized instructions
-- Seamlessly integrate system prompts, context, and formatting rules
-- Switch between different prompt strategies without manual rewriting
+## Project Layout
 
-### 3. Token Estimation & Optimization
-- Real-time token count calculation for your prompts
-- Rough estimation display before sending to AI models
-- Helps optimize prompt length for API cost management
-- Supports multiple tokenization methods (GPT, Claude, etc.)
+- `bridge-server/` – Express + ws server for local API and extension messaging.
+- `extension/` – Manifest V3 extension with:
+  - `background.js` websocket client + request translator.
+  - `content-script.js` Gemini UI prompt injection and response scraping.
 
-### 4. Memory Integration & Webhooks
-- Connect to personal knowledge bases (NotebookLM, Git repositories, etc.)
-- Read from and write to external memory storage via webhooks
-- Persistent context across sessions for enhanced AI interactions
-- Sync important outputs to your personal documentation system
-- Bidirectional memory flow: fetch context for prompts, save responses for future reference
+## Quick Start
 
-## Use Cases
+### 1) Run the bridge server
 
-- **Developers**: Standardize code review prompts, documentation generation, and debugging workflows
-- **Content Creators**: Maintain consistent tone and style across AI-assisted writing
-- **Researchers**: Build reusable prompt libraries for data analysis and literature reviews
-- **Teams**: Share prompt templates and maintain organizational knowledge bases
+```bash
+cd bridge-server
+npm install
+npm start
+```
 
-## Technology Stack
+The bridge exposes:
 
-- Chrome Extension (Manifest V3)
-- JavaScript/TypeScript
-- Webhook integration for external storage
-- Token counting libraries
+- `GET /health`
+- `POST /message`
+- `POST /v1/chat/completions`
 
-## Installation
+### 2) Load the extension
 
-*Coming soon*
+1. Open `chrome://extensions`.
+2. Enable **Developer mode**.
+3. Click **Load unpacked** and select the `extension/` directory.
+4. Open `https://gemini.google.com/app` and keep the tab signed in.
 
-## Configuration
+The extension will auto-connect to `ws://localhost:8888/ws-extension`.
 
-*Documentation in progress*
+### 3) Send a test request
 
-## Contributing
+Simple message API:
 
-This project is open source under the MIT License. Contributions welcome!
+```bash
+curl -sS http://localhost:8888/message \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Hi"}'
+```
+
+OpenAI-compatible API:
+
+```bash
+curl -sS http://localhost:8888/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model":"gemini-web-ui",
+    "messages":[
+      {"role":"system","content":"You are helpful."},
+      {"role":"user","content":"Hi"}
+    ]
+  }'
+```
+
+## Prompt Rules Applied by Extension
+
+The extension prepends these rules before passing the conversation to Gemini:
+
+- Response must be short and concise.
+- Avoid prose and prefer colourful responses.
+- Tool calls are allowed for local resource control.
+- Tool calls must appear after a literal `tools section` heading.
+
+## Limitations
+
+- Gemini DOM selectors can change; content-script selectors may need maintenance.
+- Streaming responses are not implemented yet (returns non-stream OpenAI response).
+- Token usage is currently placeholder values (`0`).
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details
+MIT License - see [LICENSE](LICENSE) file for details.
